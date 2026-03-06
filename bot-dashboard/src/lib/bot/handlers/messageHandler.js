@@ -19,7 +19,9 @@ async function handleMessage(sock, m) {
       msg.message.protocolMessage.type === 0
     ) {
       const deletedId = msg.message.protocolMessage.key.id;
-      console.log(`Message deletion detected for ID: ${deletedId}`);
+      const logMsg = `Message deletion detected for ID: ${deletedId}`;
+      if (global.addBotLog) global.addBotLog(logMsg);
+      else console.log(logMsg);
       deletedMessages.add(deletedId);
       continue;
     }
@@ -31,14 +33,17 @@ async function handleMessage(sock, m) {
       messageType === "documentMessage" &&
       msg.message.documentMessage.mimetype === "application/pdf"
     ) {
-      console.log(
-        `PDF received. Waiting ${config.timeDelay} seconds before download...`,
-      );
-      await delay(config.timeDelay * 1000); // 2 second delay
+      const logMsg = "PDF received. Waiting 2 seconds before download...";
+      if (global.addBotLog) global.addBotLog(logMsg);
+      else console.log(logMsg);
+
+      await delay(2000); // 2 second delay
 
       // Check if message was deleted during the delay
       if (deletedMessages.has(msg.key.id)) {
-        console.log("the uploading canceled due to message deletion");
+        const delMsg = "the uploading canceled due to message deletion";
+        if (global.addBotLog) global.addBotLog(delMsg);
+        else console.log(delMsg);
         deletedMessages.delete(msg.key.id); // Clean up
         continue;
       }
@@ -54,9 +59,9 @@ async function handleMessage(sock, m) {
         await sendReplyPDF(sock, msg.key.remoteJid);
       }
     } else {
-      console.log(
-        `Msg from ${msg.pushName || msg.key.remoteJid}: ${msg.message?.conversation || "Media"}`,
-      );
+      const msgLog = `Msg from ${msg.pushName || msg.key.remoteJid}: ${msg.message?.conversation || "Media"}`;
+      if (global.addBotLog) global.addBotLog(msgLog);
+      else console.log(msgLog);
     }
   }
 }

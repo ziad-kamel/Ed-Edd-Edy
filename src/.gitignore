@@ -1,6 +1,6 @@
 # Dependencies
-/node_modules
 bot-dashboard/node_modules/
+/node_modules
 
 # Next.js build
 bot-dashboard/.next/
@@ -8,7 +8,6 @@ bot-dashboard/out/
 
 # WhatsApp session and temporary state
 auth_info_baileys/
-bot-status.json
 
 # Local files
 recived/

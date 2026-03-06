@@ -1,6 +1,6 @@
 # Dependencies
 bot-dashboard/node_modules/
-/node_modules
+/node_modules/
 
 # Next.js build
 bot-dashboard/.next/

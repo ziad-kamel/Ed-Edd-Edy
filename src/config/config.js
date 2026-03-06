@@ -4,5 +4,5 @@ module.exports = {
   pdfPath: "/home/zmk/Downloads/ZiadKamell.pdf",
   downloadDir: "./recived",
   browser: ["Ubuntu", "Chrome", "20.0.04"],
-  timeDelay: 9,
+  timeDelay: 2,
 };

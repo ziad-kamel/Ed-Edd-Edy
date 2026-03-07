@@ -53,10 +53,14 @@ export default function Home() {
   useEffect(() => {
     fetchStatus();
     fetchFiles();
+    const intervalTime = parseInt(
+      process.env.NEXT_PUBLIC_POLLING_INTERVAL || "1000",
+      10,
+    );
     const interval = setInterval(() => {
       fetchStatus();
       fetchFiles();
-    }, 3000);
+    }, intervalTime);
     return () => clearInterval(interval);
   }, []);
 

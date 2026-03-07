@@ -12,6 +12,7 @@ auth_info_baileys/
 
 # Local files
 recived/
+sent/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

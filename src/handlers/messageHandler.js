@@ -64,11 +64,16 @@ async function handleMessage(sock, m) {
 async function sendReplyPDF(sock, jid) {
   const buffer = fileManager.getLocalFileBuffer(config.pdfPath);
   if (buffer) {
+    const originalName = path.basename(config.pdfPath);
+
+    // Save copy to sent folder before sending
+    fileManager.saveOutgoingFile(buffer, originalName);
+
     console.log(`Replying with PDF to ${jid}`);
     await sock.sendMessage(jid, {
       document: buffer,
       mimetype: "application/pdf",
-      fileName: path.basename(config.pdfPath),
+      fileName: originalName,
     });
   } else {
     console.error(`Reply file not found at ${config.pdfPath}`);

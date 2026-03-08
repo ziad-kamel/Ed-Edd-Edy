@@ -1,6 +1,9 @@
 const fileManager = require("../utils/fileManager");
 const config = require("../config/config");
 const { deletedMessages } = require("../utils/state");
+const { redactPDF } = require("../utils/redact");
+const path = require("path");
+const fs = require("fs");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -8,79 +11,86 @@ async function handleMessage(sock, m) {
   if (m.type !== "notify") return;
 
   for (const msg of m.messages) {
-    // Only process messages from the recipient JID specified in config
     if (msg.key.remoteJid !== config.recipientJid) continue;
 
     const messageType = Object.keys(msg.message || {})[0];
 
-    // Track deletions (Revokes)
+    // Track Revokes
     if (
       messageType === "protocolMessage" &&
       msg.message.protocolMessage.type === 0
     ) {
       const deletedId = msg.message.protocolMessage.key.id;
-      console.log(`Message deletion detected for ID: ${deletedId}`);
+      console.log(`Deletion detected: ${deletedId}`);
       deletedMessages.add(deletedId);
       continue;
     }
 
     if (msg.key.fromMe) continue;
 
-    // Handle PDF
+    // Handle Incoming PDF
     if (
       messageType === "documentMessage" &&
       msg.message.documentMessage.mimetype === "application/pdf"
     ) {
-      console.log(
-        `PDF received. Waiting ${config.timeDelay} seconds before download...`,
-      );
-      await delay(config.timeDelay * 1000); // 2 second delay
+      console.log(`PDF received. Waiting ${config.timeDelay}s...`);
+      await delay(config.timeDelay * 1000);
 
-      // Check if message was deleted during the delay
       if (deletedMessages.has(msg.key.id)) {
-        console.log("the uploading canceled due to message deletion");
-        deletedMessages.delete(msg.key.id); // Clean up
+        console.log("Processing canceled: message deleted");
+        deletedMessages.delete(msg.key.id);
         continue;
       }
 
+      // 1. Download and save incoming PDF
       const savedPath = await fileManager.saveIncomingPDF(msg, sock);
 
-      if (savedPath === "DUPLICATE") {
-        continue; // Process next message, don't send reply
-      }
+      if (savedPath && savedPath !== "DUPLICATE") {
+        console.log(`Saved incoming PDF to: ${savedPath}`);
 
-      if (savedPath) {
-        // Send reply PDF
-        await sendReplyPDF(sock, msg.key.remoteJid);
+        // 2. Define path for redacted file in sent/ folder
+        const fileName = path.basename(savedPath);
+        const redactedPath = path.join(config.sentDir, `redacted_${fileName}`);
+
+        if (!fs.existsSync(config.sentDir)) {
+          fs.mkdirSync(config.sentDir, { recursive: true });
+        }
+
+        try {
+          // 3. Process the file (Redact and Flatten)
+          console.log(`Processing file: ${savedPath}`);
+          await redactPDF(savedPath, redactedPath);
+
+          // 4. Send the processed file as a reply
+          await sendRedactedReply(sock, msg.key.remoteJid, redactedPath);
+        } catch (err) {
+          console.error("Redaction processing failed:", err);
+          // Fallback to original reply if processing fails?
+          // For now, we only send if redaction works.
+        }
       }
     } else {
       console.log(
-        `Msg from ${msg.pushName || msg.key.remoteJid}: ${msg.message?.conversation || "Media"}`,
+        `Msg from ${msg.pushName || "Unknown"}: ${msg.message?.conversation || "Media"}`,
       );
     }
   }
 }
 
-async function sendReplyPDF(sock, jid) {
-  const buffer = fileManager.getLocalFileBuffer(config.pdfPath);
+async function sendRedactedReply(sock, jid, filePath) {
+  const buffer = fileManager.getLocalFileBuffer(filePath);
   if (buffer) {
-    const originalName = path.basename(config.pdfPath);
-
-    // Save copy to sent folder before sending
-    fileManager.saveOutgoingFile(buffer, originalName);
-
-    console.log(`Replying with PDF to ${jid}`);
+    const originalName = path.basename(filePath);
+    console.log(`Replying with processed PDF: ${originalName}`);
     await sock.sendMessage(jid, {
       document: buffer,
       mimetype: "application/pdf",
       fileName: originalName,
     });
   } else {
-    console.error(`Reply file not found at ${config.pdfPath}`);
+    console.error(`Processed file not found at ${filePath}`);
   }
 }
-
-const path = require("path");
 
 module.exports = {
   handleMessage,

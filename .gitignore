@@ -1,6 +1,7 @@
 # Dependencies
 bot-dashboard/node_modules/
 /node_modules/
+/pdf-manipulation/node_modules/
 /auth_info_baileys/
 
 # Next.js build

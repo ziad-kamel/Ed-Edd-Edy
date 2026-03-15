@@ -1,55 +1,103 @@
-# WhatsApp PDF Automation Bot
+# WhatsApp PDF Secure Redactor 🛡️
 
-A robust, modular WhatsApp bot built using Baileys and Node.js. This bot is designed to automate the receiving, downloading, and replying of PDF documents with advanced safety and duplication checks.
+A powerful, automated WhatsApp bot designed to receive PDFs, dynamically redact sensitive information based on document content, and "flatten" the files via rasterization to ensure data security. Built with **Node.js**, **Baileys**, and **pdf-lib**.
 
-## 🚀 Key Features
+---
 
-- **Modular Architecture**: Clean separation of concerns across config, handlers, and utilities.
-- **PDF Automation**:
-  - **Auto-Download**: Automatically detects and saves incoming PDF files to a dedicated `recived` folder.
-  - **Auto-Reply**: Instantly sends a predefined local PDF file back to the sender.
-- **Advanced Processing Logic**:
-  - **Delayed Action**: Configurable wait time (currently 9s) before processing to allow for user corrections.
-  - **Deletion Safety**: Detects if a sender revokes/deletes their file during the delay and cancels the task.
-  - **Content Hash Check**: Uses **SHA-256 fingerprinting** to prevent downloading duplicate files, even if they have different filenames.
-- **Infrastructure**:
-  - **Persistent Auth**: Multi-file authentication state to avoid re-scanning the QR code.
-  - **Stability**: Automatic reconnection logic and version spoofing to ensure 24/7 uptime.
+## 🌟 Key Features
+
+### 1. **Dynamic PDF Redaction**
+
+- **Smart Detection**: Uses `pdf2json` to parse document structure and find specific text markers (e.g., Arabic labels) regardless of layout shifts.
+- **Precise Overlays**: Automatically calculates coordinates to place aesthetic redaction boxes (Greenish headers, Greyish details) over sensitive data.
+
+### 2. **Bulletproof Security (Flattening)**
+
+- **Rasterization Flow**: Unlike standard redaction which just hides text, this bot converts the entire PDF page into a high-resolution (**300 DPI**) PNG image using `pdftoppm`.
+- **Non-Recoverable**: The image is then re-embedded into a fresh PDF. This ensures the original text is physically removed and cannot be "copy-pasted" or recovered by reversing the layers.
+
+### 3. **Smart Automation**
+
+- **Duplicate Prevention**: Uses **SHA-256 fingerprinting** to ignore identical files even if they have different names.
+- **Revoke Monitoring**: Watches for "Delete for Everyone" actions. If a user deletes a file during the processing delay, the bot cancels the task immediately.
+- **Original Filename Retention**: Replies to users with the same filename they sent, maintaining professional consistency.
+
+### 4. **Management Dashboard**
+
+- A companion **Next.js Dashboard** to monitor bot status, control connection cycles, and view processing logs in real-time.
+
+---
 
 ## 📂 Project Structure
 
 ```text
-├── index.js                # Entry point & connection lifecycle
+├── index.js                # Core connection & lifecycle management
+├── bot-dashboard/          # Next.js web interface for bot control
 ├── src/
 │   ├── config/
-│   │   └── config.js       # Centralized settings (Paths, Delays, JIDs)
+│   │   └── config.js       # Centralized settings (JIDs, Delays, Paths)
 │   ├── handlers/
-│   │   └── messageHandler.js # Logic for incoming messages & routing
-│   ├── utils/
-│   │   ├── fileManager.js  # File operations (Hashing, Saving, Reading)
-│   │   └── state.js        # Tracks live state (e.g., deleted messages)
-├── auth_info_baileys/      # Persistent session data
-└── recived/                # Storage for incoming PDF files
+│   │   └── messageHandler.js # Coordination of download -> redact -> reply
+│   └── utils/
+│       ├── redact.js       # Dynamic coordinate logic & Rasterization
+│       ├── fileManager.js  # SHA-256 hashing & filesystem operations
+│       └── state.js        # Tracks live session state (revokes, etc.)
+├── recived/                # Secure storage for incoming original PDFs
+└── sent/                   # Log of processed/redacted PDF versions
 ```
 
-## 🛠️ Installation & Usage
+---
 
-1.  **Install Dependencies**:
+## 🛠️ System Requirements
+
+- **Node.js**: v16+
+- **System Tool**: `pdftoppm` (Required for flattening).
+  - _Ubuntu/Debian:_ `sudo apt-get install poppler-utils`
+  - _MacOS:_ `brew install poppler`
+
+---
+
+## 🚀 Setup & Installation
+
+1.  **Clone & Install Dependencies**:
 
     ```bash
     npm install
     ```
 
 2.  **Configuration**:
-    Update `src/config/config.js` with your preferred paths and recipient information.
+    Edit `src/config/config.js`:
+    - `recipientJid`: The WhatsApp ID of the user/group to monitor.
+    - `timeDelay`: How many seconds to wait before processing (gives users time to revoke errors).
 
-3.  **Run the Bot**:
+3.  **Start the Application**:
+
+    **Windows (Automated One-Click):**
+    Double-click `run_project.bat`. This script will check for Node.js, sync dependencies for both the bot and the dashboard, and launch the web server.
+
+    **Manual Terminal (Multi-platform):**
+
     ```bash
+    # To run the web dashboard (recommended)
+    cd bot-dashboard && npm run dev
+
+    # To run the bot directly (no UI)
     node index.js
     ```
 
-## 🛡️ Safety Mechanisms
+4.  **Authentication**:
+    Scan the generated QR code in your terminal or dashboard using WhatsApp Linked Devices.
 
-- **Loop Protection**: The bot is programmed to ignore its own messages, preventing infinite response loops.
-- **Duplicate Detection**: Before saving any file, the bot compares the binary content hash against existing files in the `./recived` folder.
-- **Deletion Hook**: Listens for `protocolMessage` updates to catch "Delete for everyone" actions in real-time.
+---
+
+## 🛡️ Security Mechanisms
+
+- **Metadata Strip**: The output PDF is generated as a brand new document, stripping away original metadata.
+- **Sandbox Processing**: Temporary images used during rasterization are automatically deleted after a successful reply.
+- **Loop Protection**: The bot ignores messages sent by itself to prevent infinite automated loops.
+
+---
+
+## ⚖️ License
+
+This project is for private automation work. Ensure compliance with WhatsApp Terms of Service when deploying.

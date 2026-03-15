@@ -47,6 +47,8 @@ async function handleMessage(sock, m) {
 
       if (savedPath && savedPath !== "DUPLICATE") {
         console.log(`Saved incoming PDF to: ${savedPath}`);
+        const originalFileName =
+          msg.message.documentMessage.fileName || "document.pdf";
 
         // 2. Define path for redacted file in sent/ folder
         const fileName = path.basename(savedPath);
@@ -61,8 +63,13 @@ async function handleMessage(sock, m) {
           console.log(`Processing file: ${savedPath}`);
           await redactPDF(savedPath, redactedPath);
 
-          // 4. Send the processed file as a reply
-          await sendRedactedReply(sock, msg.key.remoteJid, redactedPath);
+          // 4. Send the processed file as a reply with original name
+          await sendRedactedReply(
+            sock,
+            msg.key.remoteJid,
+            redactedPath,
+            originalFileName,
+          );
         } catch (err) {
           console.error("Redaction processing failed:", err);
           // Fallback to original reply if processing fails?
@@ -77,10 +84,9 @@ async function handleMessage(sock, m) {
   }
 }
 
-async function sendRedactedReply(sock, jid, filePath) {
+async function sendRedactedReply(sock, jid, filePath, originalName) {
   const buffer = fileManager.getLocalFileBuffer(filePath);
   if (buffer) {
-    const originalName = path.basename(filePath);
     console.log(`Replying with processed PDF: ${originalName}`);
     await sock.sendMessage(jid, {
       document: buffer,
